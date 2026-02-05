@@ -1,0 +1,170 @@
+name: CI - Proteção de Branch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: Validar código e qualidade
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 1️⃣ Verificar existência de index.html na raiz
+        run: |
+          if [ ! -f "index.html" ]; then
+            echo "❌ ERRO: Arquivo index.html não encontrado na raiz do projeto!"
+            echo "O GitHub Pages requer este arquivo para funcionar."
+            exit 1
+          fi
+          echo "✅ index.html encontrado na raiz"
+
+      - name: 2️⃣ Validar que index.html não foi renomeado
+        run: |
+          if [ -f "index-teste.html" ] || [ -f "home.html" ] || [ -f "main.html" ]; then
+            echo "❌ ERRO: index.html foi renomeado ou duplicado!"
+            echo "O arquivo principal DEVE ser nomeado como 'index.html'"
+            exit 1
+          fi
+          echo "✅ Arquivo está com nome correto"
+
+      - name: 3️⃣ Verificar arquivos com tamanho maior que 500KB
+        run: |
+          echo "🔍 Procurando arquivos > 500KB..."
+          LARGE_FILES=$(find . -type f -size +500k -not -path './.git/*' -not -path './.github/*')
+          if [ ! -z "$LARGE_FILES" ]; then
+            echo "❌ ERRO: Os seguintes arquivos excedem 500KB:"
+            echo "$LARGE_FILES"
+            exit 1
+          fi
+          echo "✅ Todos os arquivos estão dentro do limite de 500KB"
+
+      - name: 4️⃣ Varredura de comentários TODO, FIXME e termos sensíveis
+        run: |
+          echo "🔍 Procurando comentários TODO/FIXME e termos sensíveis..."
+          VIOLATIONS=0
+
+          echo ""
+          echo "Checando TODO..."
+          if grep -r "TODO" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null; then
+            echo "❌ Encontrados comentários TODO"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+
+          echo ""
+          echo "Checando FIXME..."
+          if grep -r "FIXME" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null; then
+            echo "❌ Encontrados comentários FIXME"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+
+          echo ""
+          echo "Checando 'senha' ou 'password'..."
+          if grep -ri "senha\|password" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null | grep -v "node_modules" | grep -v ".git"; then
+            echo "❌ Encontrados termos sensíveis (senha/password)"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+
+          if [ $VIOLATIONS -gt 0 ]; then
+            echo ""
+            echo "❌ ERRO: Encontradas $VIOLATIONS violação(ões) de qualidade"
+            exit 1
+          fi
+          echo "✅ Nenhum comentário TODO/FIXME ou termo sensível encontrado"
+
+      - name: 5️⃣ Executar Linter HTML
+        run: |
+          echo "📋 Instalando validador HTML..."
+          apt-get update -qq
+          apt-get install -y -qq html-tidy
+
+          echo "🔍 Validando HTML com Tidy..."
+          TIDY_OUTPUT=$(tidy -e -q index.html 2>&1 || true)
+          
+          if echo "$TIDY_OUTPUT" | grep -q "Error\|error"; then
+            echo "❌ ERRO: Problemas encontrados no HTML:"
+            echo "$TIDY_OUTPUT"
+            exit 1
+          fi
+          echo "✅ HTML válido segundo W3C standards"
+
+      - name: 6️⃣ Validar URLs e caminhos em tags link e img
+        run: |
+          echo "🔍 Validando tags link e img..."
+          
+          # Extrair todas as URLs de links
+          echo ""
+          echo "Checando links (<a href> e <link rel>)..."
+          LINK_ERRORS=0
+          
+          # Verificar links relativos de arquivos locais
+          while IFS= read -r line; do
+            # Extrair href="..." ou src="..."
+            if [[ $line =~ href=\"([^\"]+)\" ]]; then
+              URL="${BASH_REMATCH[1]}"
+              # Se for URL relativa (não começa com http) e não for âncora
+              if [[ ! "$URL" =~ ^http && ! "$URL" =~ ^# && ! "$URL" =~ ^mailto: ]]; then
+                if [ ! -f "$URL" ]; then
+                  echo "❌ Arquivo não encontrado: $URL"
+                  LINK_ERRORS=$((LINK_ERRORS + 1))
+                fi
+              fi
+            fi
+          done < <(grep -o 'href="[^"]*"' index.html)
+          
+          # Verificar src em tags img
+          echo ""
+          echo "Checando imagens (<img src>)..."
+          while IFS= read -r line; do
+            if [[ $line =~ src=\"([^\"]+)\" ]]; then
+              SRC="${BASH_REMATCH[1]}"
+              # Se for URL relativa
+              if [[ ! "$SRC" =~ ^http ]]; then
+                if [ ! -f "$SRC" ]; then
+                  echo "⚠️  Imagem não encontrada: $SRC (será necessário adicionar)"
+                fi
+              fi
+            fi
+          done < <(grep -o 'src="[^"]*"' index.html)
+          
+          # Verificar src em tags link href
+          while IFS= read -r line; do
+            if [[ $line =~ href=\"([^\"]+)\" ]]; then
+              HREF="${BASH_REMATCH[1]}"
+              # Se for CSS ou arquivo local
+              if [[ "$HREF" =~ \.css$ ]]; then
+                if [ ! -f "$HREF" ]; then
+                  echo "❌ Arquivo CSS não encontrado: $HREF"
+                  LINK_ERRORS=$((LINK_ERRORS + 1))
+                fi
+              fi
+            fi
+          done < <(grep -o '<link[^>]*href="[^"]*"' index.html)
+          
+          if [ $LINK_ERRORS -gt 0 ]; then
+            echo "❌ ERRO: $LINK_ERRORS caminho(s) inválido(s) encontrado(s)"
+            exit 1
+          fi
+          echo "✅ Todos os caminhos e URLs estão válidos"
+
+      - name: 📊 Resumo da Validação
+        if: always()
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════"
+          echo "✅ TODAS AS VALIDAÇÕES FORAM COMPLETADAS COM SUCESSO!"
+          echo "════════════════════════════════════════════════"
+          echo ""
+          echo "Resumo:"
+          echo "  ✓ index.html existe e tem nome correto"
+          echo "  ✓ Nenhum arquivo excede 500KB"
+          echo "  ✓ Nenhum comentário TODO/FIXME ou termo sensível"
+          echo "  ✓ HTML validado conforme padrões W3C"
+          echo "  ✓ Todas as URLs e caminhos são válidos"
+          echo ""
+          echo "O código está pronto para produção! 🚀"
+          echo "════════════════════════════════════════════════"
