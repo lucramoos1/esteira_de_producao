@@ -1,23 +1,8 @@
-# Portfólio Profissional - Landing Page
+# 🚀 Portfólio Profissional - Landing Page + Pipeline CI/CD
 
-Uma landing page moderna e responsiva para apresentar suas habilidades técnicas, projetos e redes sociais.
+Uma landing page moderna, responsiva e automatizada com pipeline CI/CD para apresentar suas habilidades técnicas, projetos e redes sociais.
 
-## Estrutura do Projeto
-
-```
-├── index.html          # Arquivo HTML principal
-├── style.css          # Folha de estilos
-├── images/            # Pasta para armazenar imagens
-│   ├── profile.jpg    # Foto de perfil (150x150px recomendado)
-│   ├── project1.jpg   # Imagem do projeto 1 (otimizada para web)
-│   ├── project2.jpg   # Imagem do projeto 2 (otimizada para web)
-│   ├── project3.jpg   # Imagem do projeto 3 (otimizada para web)
-│   └── project4.jpg   # Imagem do projeto 4 (otimizada para web)
-└── README.md          # Este arquivo
-
-```
-
-## Requisitos Atendidos
+## 📋 Requisitos Atendidos
 
 - ✅ Arquivo `index.html` na raiz do projeto
 - ✅ Folha de estilos `style.css`
@@ -56,16 +41,70 @@ As imagens devem ser otimizadas para web. Recomendações:
 7. **Links Externos**: Atributos target="_blank" e rel="noopener noreferrer"
 8. **SEO Básico**: Meta description, estrutura heading correta
 
-## Como Usar
 
-1. Coloque suas imagens otimizadas na pasta `/images/`
-2. Edite o arquivo `index.html` para:
-   - Atualizar seu nome e descrição
-   - Adicionar links corretos de redes sociais
-   - Colocar seu email no link de contato
-   - Atualizar descrições de projetos conforme necessário
-3. Customize as cores em `style.css` editando as variáveis CSS em `:root`
-4. Abra `index.html` em um navegador para visualizar
+## 🔐 Pipeline CI/CD
+
+Este projeto inclui uma pipeline de **Integração Contínua (CI)** que valida automaticamente cada Pull Request.
+
+### ✅ Validações Implementadas
+
+- [x] Verificação de `index.html` na raiz
+- [x] Bloqueio de arquivos maiores que 500KB
+- [x] Varredura de TODO, FIXME e termos sensíveis
+- [x] Validação HTML com W3C standards
+- [x] Verificação de URLs e caminhos de imagens
+
+### 🚀 Como Usar
+
+#### **Validação Local (Antes de fazer Push)**
+
+Windows:
+```powershell
+.\validate.ps1
+```
+
+Linux/Mac:
+```bash
+chmod +x validate.sh
+./validate.sh
+```
+
+#### **Fluxo de Desenvolvimento**
+
+```bash
+# 1. Crie uma branch
+git checkout -b feature/sua-funcionalidade
+
+# 2. Faça suas mudanças
+# ... edite arquivos ...
+
+# 3. Valide localmente
+.\validate.ps1  # ou ./validate.sh
+
+# 4. Commit e Push
+git add .
+git commit -m "Descrição da mudança"
+git push origin feature/sua-funcionalidade
+
+# 5. Abra um Pull Request no GitHub
+# A pipeline será executada automaticamente
+```
+
+### 📊 Configurando Proteção de Branch
+
+Para bloquear merge quando testes falham:
+
+1. Vá para **Settings** > **Branches**
+2. Clique em **Add rule**
+3. Digite: `main`
+4. Ative:
+   - [x] Require a pull request before merging
+   - [x] Require status checks to pass before merging
+   - [x] Require branches to be up to date
+
+**Leia**: [BRANCH_PROTECTION.md](BRANCH_PROTECTION.md)
+
+---
 
 ## Validação de Liga para Produção
 
@@ -85,7 +124,3 @@ Antes de fazer o deploy:
 - CSS3 (Flexbox, Grid, Media Queries)
 - Sem dependências externas
 - Cross-browser compatible
-
-## License
-
-Este projeto é seu. Use como desejar!
