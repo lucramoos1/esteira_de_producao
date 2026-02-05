@@ -1,0 +1,70 @@
+name: CD - Deploy para GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    name: Deploy para Produção
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: ✅ Validação pré-deploy
+        run: |
+          echo "🔍 Validando arquivos antes do deploy..."
+          
+          if [ ! -f "index.html" ]; then
+            echo "❌ ERRO: index.html não encontrado!"
+            exit 1
+          fi
+          
+          if [ ! -f "style.css" ]; then
+            echo "❌ ERRO: style.css não encontrado!"
+            exit 1
+          fi
+          
+          echo "✅ Arquivos validados com sucesso"
+
+      - name: 📦 Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: 📤 Upload dos arquivos
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: 🚀 Deploy para GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: 📊 Resumo do Deploy
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════"
+          echo "✅ DEPLOY CONCLUÍDO COM SUCESSO!"
+          echo "════════════════════════════════════════════════"
+          echo ""
+          echo "📍 URL: ${{ steps.deployment.outputs.page_url }}"
+          echo ""
+          echo "Seu site está ao vivo em GitHub Pages!"
+          echo "Todas as mudanças de main foram publicadas."
+          echo ""
+          echo "════════════════════════════════════════════════"
