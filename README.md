@@ -2,6 +2,9 @@
 
 # 🚀 Portfólio Profissional - Landing Page + Pipeline CI/CD
 
+[![CI - Proteção de Branch](https://github.com/lucramoosi/esteira_de_producao/actions/workflows/ci.yml/badge.svg)](https://github.com/lucramoosi/esteira_de_producao/actions/workflows/ci.yml)
+[![CD - Deploy para GitHub Pages](https://github.com/lucramoosi/esteira_de_producao/actions/workflows/deploy.yml/badge.svg)](https://github.com/lucramoosi/esteira_de_producao/actions/workflows/deploy.yml)
+
 Uma landing page moderna, responsiva e automatizada com pipeline CI/CD para apresentar suas habilidades técnicas, projetos e redes sociais.
 
 ## 📋 Requisitos Atendidos
