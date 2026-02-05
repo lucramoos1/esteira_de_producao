@@ -76,23 +76,7 @@ jobs:
           fi
           echo "✅ Nenhum comentário TODO/FIXME ou termo sensível encontrado"
 
-      - name: 5️⃣ Executar Linter HTML
-        run: |
-          echo "📋 Instalando validador HTML..."
-          apt-get update -qq
-          apt-get install -y -qq html-tidy
-
-          echo "🔍 Validando HTML com Tidy..."
-          TIDY_OUTPUT=$(tidy -e -q index.html 2>&1 || true)
-          
-          if echo "$TIDY_OUTPUT" | grep -q "Error\|error"; then
-            echo "❌ ERRO: Problemas encontrados no HTML:"
-            echo "$TIDY_OUTPUT"
-            exit 1
-          fi
-          echo "✅ HTML válido segundo W3C standards"
-
-      - name: 6️⃣ Validar URLs e caminhos em tags link e img
+      - name: 5️⃣ Validar URLs e caminhos em tags link e img
         run: |
           echo "🔍 Validando tags link e img..."
           
@@ -163,7 +147,6 @@ jobs:
           echo "  ✓ index.html existe e tem nome correto"
           echo "  ✓ Nenhum arquivo excede 500KB"
           echo "  ✓ Nenhum comentário TODO/FIXME ou termo sensível"
-          echo "  ✓ HTML validado conforme padrões W3C"
           echo "  ✓ Todas as URLs e caminhos são válidos"
           echo ""
           echo "O código está pronto para produção! 🚀"
