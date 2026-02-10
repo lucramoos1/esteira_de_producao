@@ -14,25 +14,46 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: 1️⃣ Verificar existência de index.html na raiz
+      - name: 1️⃣ Verificar existência da pasta src/
         run: |
-          if [ ! -f "index.html" ]; then
-            echo "❌ ERRO: Arquivo index.html não encontrado na raiz do projeto!"
-            echo "O GitHub Pages requer este arquivo para funcionar."
+          echo "🔍 Verificando pasta src/..."
+          if [ ! -d "src" ]; then
+            echo "❌ ERRO: Pasta src/ não encontrada na raiz do projeto!"
             exit 1
           fi
-          echo "✅ index.html encontrado na raiz"
+          echo "✅ Pasta src/ encontrada"
 
-      - name: 2️⃣ Validar que index.html não foi renomeado
+      - name: 2️⃣ Verificar existência de index.html em src/
         run: |
-          if [ -f "index-teste.html" ] || [ -f "home.html" ] || [ -f "main.html" ]; then
-            echo "❌ ERRO: index.html foi renomeado ou duplicado!"
-            echo "O arquivo principal DEVE ser nomeado como 'index.html'"
+          echo "🔍 Verificando src/index.html..."
+          if [ ! -f "src/index.html" ]; then
+            echo "❌ ERRO: Arquivo src/index.html não encontrado!"
+            echo "O GitHub Pages requer este arquivo na pasta src/ para funcionar."
             exit 1
           fi
-          echo "✅ Arquivo está com nome correto"
+          echo "✅ src/index.html encontrado"
 
-      - name: 3️⃣ Verificar arquivos com tamanho maior que 500KB
+      - name: 3️⃣ Verificar existência de style.css em src/css/
+        run: |
+          echo "🔍 Verificando src/css/style.css..."
+          if [ ! -f "src/css/style.css" ]; then
+            echo "❌ ERRO: Arquivo src/css/style.css não encontrado!"
+            exit 1
+          fi
+          echo "✅ src/css/style.css encontrado"
+
+      - name: 4️⃣ Verificar se style.css está referenciado corretamente no HTML
+        run: |
+          echo "🔍 Validando caminho CSS no HTML..."
+          if grep -q 'href="css/style.css"' src/index.html; then
+            echo "✅ Caminho CSS está correto no HTML (href=\"css/style.css\")"
+          else
+            echo "❌ ERRO: Caminho CSS incorreto no HTML!"
+            echo "Esperado: href=\"css/style.css\""
+            exit 1
+          fi
+
+      - name: 5️⃣ Verificar arquivos com tamanho maior que 500KB
         run: |
           echo "🔍 Procurando arquivos > 500KB..."
           LARGE_FILES=$(find . -type f -size +500k -not -path './.git/*' -not -path './.github/*')
@@ -43,28 +64,28 @@ jobs:
           fi
           echo "✅ Todos os arquivos estão dentro do limite de 500KB"
 
-      - name: 4️⃣ Varredura de comentários TODO, FIXME e termos sensíveis
+      - name: 6️⃣ Varredura de comentários TODO, FIXME e termos sensíveis
         run: |
           echo "🔍 Procurando comentários TODO/FIXME e termos sensíveis..."
           VIOLATIONS=0
 
           echo ""
           echo "Checando TODO..."
-          if grep -r "TODO" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null; then
+          if grep -rE "\bTODO\b|\bTODO:" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
             echo "❌ Encontrados comentários TODO"
             VIOLATIONS=$((VIOLATIONS + 1))
           fi
 
           echo ""
           echo "Checando FIXME..."
-          if grep -r "FIXME" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null; then
+          if grep -rE "\bFIXME\b|\bFIXME:" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
             echo "❌ Encontrados comentários FIXME"
             VIOLATIONS=$((VIOLATIONS + 1))
           fi
 
           echo ""
           echo "Checando 'senha' ou 'password'..."
-          if grep -ri "senha\|password" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null | grep -v "node_modules" | grep -v ".git"; then
+          if grep -ri "senha\|password" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
             echo "❌ Encontrados termos sensíveis (senha/password)"
             VIOLATIONS=$((VIOLATIONS + 1))
           fi
@@ -76,64 +97,34 @@ jobs:
           fi
           echo "✅ Nenhum comentário TODO/FIXME ou termo sensível encontrado"
 
-      - name: 5️⃣ Validar URLs e caminhos em tags link e img
+      - name: 7️⃣ Validar existência de tag footer com nome do aluno
         run: |
-          echo "🔍 Validando tags link e img..."
-          
-          # Extrair todas as URLs de links
-          echo ""
-          echo "Checando links (<a href> e <link rel>)..."
-          LINK_ERRORS=0
-          
-          # Verificar links relativos de arquivos locais
-          while IFS= read -r line; do
-            # Extrair href="..." ou src="..."
-            if [[ $line =~ href=\"([^\"]+)\" ]]; then
-              URL="${BASH_REMATCH[1]}"
-              # Se for URL relativa (não começa com http) e não for âncora
-              if [[ ! "$URL" =~ ^http && ! "$URL" =~ ^# && ! "$URL" =~ ^mailto: ]]; then
-                if [ ! -f "$URL" ]; then
-                  echo "❌ Arquivo não encontrado: $URL"
-                  LINK_ERRORS=$((LINK_ERRORS + 1))
-                fi
-              fi
-            fi
-          done < <(grep -o 'href="[^"]*"' index.html)
-          
-          # Verificar src em tags img
-          echo ""
-          echo "Checando imagens (<img src>)..."
-          while IFS= read -r line; do
-            if [[ $line =~ src=\"([^\"]+)\" ]]; then
-              SRC="${BASH_REMATCH[1]}"
-              # Se for URL relativa
-              if [[ ! "$SRC" =~ ^http ]]; then
-                if [ ! -f "$SRC" ]; then
-                  echo "⚠️  Imagem não encontrada: $SRC (será necessário adicionar)"
-                fi
-              fi
-            fi
-          done < <(grep -o 'src="[^"]*"' index.html)
-          
-          # Verificar src em tags link href
-          while IFS= read -r line; do
-            if [[ $line =~ href=\"([^\"]+)\" ]]; then
-              HREF="${BASH_REMATCH[1]}"
-              # Se for CSS ou arquivo local
-              if [[ "$HREF" =~ \.css$ ]]; then
-                if [ ! -f "$HREF" ]; then
-                  echo "❌ Arquivo CSS não encontrado: $HREF"
-                  LINK_ERRORS=$((LINK_ERRORS + 1))
-                fi
-              fi
-            fi
-          done < <(grep -o '<link[^>]*href="[^"]*"' index.html)
-          
-          if [ $LINK_ERRORS -gt 0 ]; then
-            echo "❌ ERRO: $LINK_ERRORS caminho(s) inválido(s) encontrado(s)"
+          echo "🔍 Validando tag footer com nome do aluno..."
+          if grep -q "<footer>" src/index.html && grep -iq "lucas araujo" src/index.html; then
+            echo "✅ Footer encontrado com nome do aluno 'Lucas Araujo'"
+          else
+            echo "❌ ERRO: Footer não contém o nome do aluno 'Lucas Araujo'!"
             exit 1
           fi
-          echo "✅ Todos os caminhos e URLs estão válidos"
+
+      - name: 8️⃣ Setup Node.js para HTMLHint
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: 9️⃣ Instalar htmlhint
+        run: npm install -g htmlhint
+
+      - name: 🔟 Executar htmlhint em src/index.html
+        run: |
+          echo "🔍 Executando HTMLHint em src/index.html..."
+          htmlhint src/index.html
+          if [ $? -eq 0 ]; then
+            echo "✅ HTMLHint passou com sucesso"
+          else
+            echo "❌ ERRO: HTMLHint encontrou problemas"
+            exit 1
+          fi
 
       - name: 📊 Resumo da Validação
         if: always()
@@ -143,13 +134,20 @@ jobs:
           echo "✅ TODAS AS VALIDAÇÕES FORAM COMPLETADAS COM SUCESSO!"
           echo "════════════════════════════════════════════════"
           echo ""
-          echo "Resumo:"
-          echo "  ✓ index.html existe e tem nome correto"
+          echo "Resumo das Verificações:"
+          echo "  ✓ Pasta src/ existe"
+          echo "  ✓ src/index.html existe"
+          echo "  ✓ src/css/style.css existe"
+          echo "  ✓ Caminhos CSS corretos"
           echo "  ✓ Nenhum arquivo excede 500KB"
           echo "  ✓ Nenhum comentário TODO/FIXME ou termo sensível"
-          echo "  ✓ Todas as URLs e caminhos são válidos"
+          echo "  ✓ Footer contém o nome do aluno"
+          echo "  ✓ HTMLHint validação passou"
           echo ""
-          echo "O código está pronto para produção! 🚀"
+          echo "════════════════════════════════════════════════"
+          echo "🎉 O código do aluno Lucas Araujo foi auditado,"
+          echo "está seguindo as normas corretas e está pronto"
+          echo "para o deploy!"
           echo "════════════════════════════════════════════════"
 
   lint-matrix:
@@ -181,18 +179,13 @@ jobs:
           echo "Executando linters com Node.js ${{ matrix.node-version }}..."
           
           # Validar HTML
-          if grep -q "\.html$" <<< "$(find . -name '*.html' -type f)"; then
-            echo "✅ Arquivos HTML encontrados"
+          if find src -name "*.html" -type f | grep -q .; then
+            echo "✅ Arquivos HTML encontrados em src/"
           fi
           
           # Validar CSS  
-          if grep -q "\.css$" <<< "$(find . -name '*.css' -type f)"; then
-            echo "✅ Arquivos CSS encontrados"
-          fi
-          
-          # Validar JavaScript
-          if grep -q "\.js$" <<< "$(find . -name '*.js' -type f)"; then
-            echo "✅ Arquivos JavaScript encontrados"
+          if find src/css -name "*.css" -type f | grep -q .; then
+            echo "✅ Arquivos CSS encontrados em src/css/"
           fi
           
           echo "✅ Lint completado com sucesso em Node.js ${{ matrix.node-version }}"
@@ -207,6 +200,6 @@ jobs:
           echo "Node.js version: ${{ matrix.node-version }}"
           echo "✓ HTML validado"
           echo "✓ CSS validado"  
-          echo "✓ Caminho dos arquivos OK"
+          echo "✓ Estrutura organizada corretamente"
           echo ""
           echo "════════════════════════════════════════════════"

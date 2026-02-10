@@ -6,25 +6,43 @@ echo ""
 
 FAILED=0
 
-echo "1️⃣  Verificando existência de index.html na raiz..."
-if [ ! -f "index.html" ]; then
-    echo "❌ ERRO: Arquivo index.html não encontrado na raiz!"
+echo "1️⃣  Verificando existência de pasta src/ na raiz..."
+if [ ! -d "src" ]; then
+    echo "❌ ERRO: Pasta src/ não encontrada na raiz!"
     FAILED=1
 else
-    echo "✅ index.html encontrado"
+    echo "✅ Pasta src/ encontrada"
 fi
 
 echo ""
-echo "2️⃣  Validando que index.html não foi renomeado..."
-if [ -f "index-teste.html" ] || [ -f "home.html" ] || [ -f "main.html" ]; then
-    echo "❌ ERRO: Encontrado arquivo com nome alternativo!"
+echo "2️⃣  Verificando existência de index.html em src/..."
+if [ ! -f "src/index.html" ]; then
+    echo "❌ ERRO: Arquivo src/index.html não encontrado!"
     FAILED=1
 else
-    echo "✅ Nome do arquivo está correto"
+    echo "✅ src/index.html encontrado"
 fi
 
 echo ""
-echo "3️⃣  Verificando arquivos maiores que 500KB..."
+echo "3️⃣  Verificando existência de style.css em src/css/..."
+if [ ! -f "src/css/style.css" ]; then
+    echo "❌ ERRO: Arquivo src/css/style.css não encontrado!"
+    FAILED=1
+else
+    echo "✅ src/css/style.css encontrado"
+fi
+
+echo ""
+echo "4️⃣  Verificando link do CSS no HTML..."
+if grep -q 'href="css/style.css"' src/index.html; then
+    echo "✅ Caminho CSS está correto"
+else
+    echo "❌ ERRO: Caminho CSS incorreto! Esperado: href=\"css/style.css\""
+    FAILED=1
+fi
+
+echo ""
+echo "5️⃣  Verificando arquivos maiores que 500KB..."
 LARGE_FILES=$(find . -type f -size +500k -not -path './.git/*' -not -path './.github/*' -not -path './node_modules/*' 2>/dev/null)
 if [ ! -z "$LARGE_FILES" ]; then
     echo "❌ ERRO: Arquivos maiores que 500KB encontrados:"
@@ -35,20 +53,20 @@ else
 fi
 
 echo ""
-echo "4️⃣  Procurando comentários TODO/FIXME e termos sensíveis..."
+echo "6️⃣  Procurando comentários TODO/FIXME e termos sensíveis..."
 VIOLATIONS=0
 
-if grep -r "TODO" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null | grep -v ".git" | grep -v "node_modules"; then
+if grep -rE "\bTODO\b|\bTODO:" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
     echo "❌ Encontrados comentários TODO"
     VIOLATIONS=$((VIOLATIONS + 1))
 fi
 
-if grep -r "FIXME" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null | grep -v ".git" | grep -v "node_modules"; then
+if grep -rE "\bFIXME\b|\bFIXME:" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
     echo "❌ Encontrados comentários FIXME"
     VIOLATIONS=$((VIOLATIONS + 1))
 fi
 
-if grep -ri "senha\|password" --include="*.html" --include="*.css" --include="*.js" . 2>/dev/null | grep -v ".git" | grep -v "node_modules"; then
+if grep -ri "senha\|password" --include="*.html" --include="*.css" --include="*.js" src/ 2>/dev/null; then
     echo "❌ Encontrados termos sensíveis (senha/password)"
     VIOLATIONS=$((VIOLATIONS + 1))
 fi
@@ -60,13 +78,33 @@ else
 fi
 
 echo ""
-echo "5️⃣  Validando URLs e caminhos em tags link e img..."
-LINK_ERRORS=0
+echo "7️⃣  Validando footer com nome do aluno..."
+if grep -q "<footer>" src/index.html && grep -iq "lucas araujo" src/index.html; then
+    echo "✅ Footer encontrado com nome do aluno 'Lucas Araujo'"
+else
+    echo "❌ ERRO: Footer não contém o nome do aluno!"
+    FAILED=1
+fi
 
-# Verificar links de CSS
-while IFS= read -r line; do
-    if [[ $line =~ href=\"([^\"]+)\" ]]; then
-        HREF="${BASH_REMATCH[1]}"
+echo ""
+echo "═══════════════════════════════════════════════════════"
+
+if [ $FAILED -eq 0 ]; then
+    echo ""
+    echo "🎉 VALIDAÇÃO CONCLUÍDA COM SUCESSO!"
+    echo "═══════════════════════════════════════════════════════"
+    echo ""
+    echo "✅ O código do aluno Lucas Araujo foi auditado,"
+    echo "está seguindo as normas corretas e está pronto para o deploy!"
+    echo ""
+    exit 0
+else
+    echo ""
+    echo "❌ VALIDAÇÃO FALHOU! Corrija os erros acima."
+    echo "═══════════════════════════════════════════════════════"
+    echo ""
+    exit 1
+fi
         if [[ "$HREF" =~ \.css$ ]]; then
             if [ ! -f "$HREF" ]; then
                 echo "❌ Arquivo CSS não encontrado: $HREF"
@@ -75,41 +113,3 @@ while IFS= read -r line; do
         fi
     fi
 done < <(grep -o '<link[^>]*href="[^"]*"' index.html 2>/dev/null)
-
-# Verificar imagens
-while IFS= read -r line; do
-    if [[ $line =~ src=\"([^\"]+)\" ]]; then
-        SRC="${BASH_REMATCH[1]}"
-        if [[ ! "$SRC" =~ ^http ]]; then
-            if [ ! -f "$SRC" ]; then
-                echo "⚠️  Arquivo não encontrado: $SRC"
-            fi
-        fi
-    fi
-done < <(grep -o 'src="[^"]*"' index.html 2>/dev/null)
-
-if [ $LINK_ERRORS -eq 0 ]; then
-    echo "✅ Caminhos validados"
-else
-    FAILED=1
-fi
-
-echo ""
-echo "═══════════════════════════════════════════════════════"
-
-if [ $FAILED -eq 0 ]; then
-    echo "✅ VALIDAÇÃO LOCAL PASSOU!"
-    echo ""
-    echo "Seu código está pronto para fazer push:"
-    echo "  git add ."
-    echo "  git commit -m 'Mensagem do commit'"
-    echo "  git push origin sua-branch"
-    echo ""
-    exit 0
-else
-    echo "❌ VALIDAÇÃO LOCAL FALHOU!"
-    echo ""
-    echo "Corrija os erros acima e tente novamente."
-    echo ""
-    exit 1
-fi

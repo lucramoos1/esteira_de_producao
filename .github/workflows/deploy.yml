@@ -31,13 +31,13 @@ jobs:
         run: |
           echo "🔍 Validando arquivos antes do deploy..."
           
-          if [ ! -f "index.html" ]; then
-            echo "❌ ERRO: index.html não encontrado!"
+          if [ ! -f "src/index.html" ]; then
+            echo "❌ ERRO: src/index.html não encontrado!"
             exit 1
           fi
           
-          if [ ! -f "style.css" ]; then
-            echo "❌ ERRO: style.css não encontrado!"
+          if [ ! -f "src/css/style.css" ]; then
+            echo "❌ ERRO: src/css/style.css não encontrado!"
             exit 1
           fi
           
@@ -49,7 +49,7 @@ jobs:
       - name: 📤 Upload dos arquivos
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'src/'
 
       - name: 🚀 Deploy para GitHub Pages
         id: deployment
@@ -66,5 +66,9 @@ jobs:
           echo ""
           echo "Seu site está ao vivo em GitHub Pages!"
           echo "Todas as mudanças de main foram publicadas."
+          echo ""
+          echo "🎉 O código do aluno Lucas Araujo foi auditado,"
+          echo "está seguindo as normas corretas e está pronto"
+          echo "para a produção!"
           echo ""
           echo "════════════════════════════════════════════════"
